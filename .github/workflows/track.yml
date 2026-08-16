@@ -1,62 +1,50 @@
-#!/usr/bin/env python3
-"""Decide whether this scheduled run should actually collect data + commit.
+name: Track Repo Stats
 
-Each UTC day gets a random target commit count between 1 and 5, seeded by
-the date string. Since every run on the same day derives the same seed, they
-all independently compute the same target and the same set of "chosen"
-slots out of the day's candidates -- no shared state or coordination needed
-between runs.
-"""
+on:
+  schedule:
+    - cron: '0 0 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 6 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 15 * * *'
+    - cron: '0 18 * * *'
+    - cron: '0 21 * * *'
+  workflow_dispatch: {}
 
-import os
-import random
-import sys
-from datetime import datetime, timezone
+permissions:
+  contents: write
 
-# Must match the cron schedule in track.yml, in the same order.
-SLOTS = [
-    "0 0 * * *",
-    "0 3 * * *",
-    "0 6 * * *",
-    "0 9 * * *",
-    "0 12 * * *",
-    "0 15 * * *",
-    "0 18 * * *",
-    "0 21 * * *",
-]
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-MIN_TARGET = 1
-MAX_TARGET = 5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
+      - run: pip install requests
 
-def decide(date_str, schedule):
-    if schedule not in SLOTS:
-        return True, None, None  # unrecognized trigger (e.g. manual) -> just run
+      - name: Decide whether today picks this slot
+        id: decide
+        run: python scripts/should_run.py >> "$GITHUB_OUTPUT"
+        env:
+          CRON_SCHEDULE: ${{ github.event.schedule }}
 
-    slot_index = SLOTS.index(schedule)
-    rng = random.Random(date_str)
-    target = rng.randint(MIN_TARGET, MAX_TARGET)
-    selected = set(rng.sample(range(len(SLOTS)), target))
-    return slot_index in selected, target, sorted(selected)
+      - name: Fetch stats
+        if: steps.decide.outputs.run == 'true'
+        run: python scripts/track_repos.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-def main():
-    schedule = os.environ.get("CRON_SCHEDULE", "").strip()
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    if not schedule:
-        print("Manual trigger (workflow_dispatch) - running", file=sys.stderr)
-        print("run=true")
-        return
-
-    chosen, target, selected = decide(date_str, schedule)
-    print(
-        f"date={date_str} schedule='{schedule}' target={target} "
-        f"selected_slots={selected} chosen={chosen}",
-        file=sys.stderr,
-    )
-    print(f"run={'true' if chosen else 'false'}")
-
-
-if __name__ == "__main__":
-    main()
+      - name: Commit data if it changed
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Log repo stats: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
