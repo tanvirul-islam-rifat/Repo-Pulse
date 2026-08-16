@@ -1,0 +1,12 @@
+# One "owner/repo" per line. Lines starting with # are ignored.
+# Swap these for repos you actually care about (your own, ones you're
+# learning from, ones you're just curious about).
+torvalds/linux
+microsoft/vscode
+facebook/react
+llvm/llvm-project
+pytorch/pytorch
+kubernetes/kubernetes
+tanvirul-islam-rifat/SyntaxScope
+tanvirul-islam-rifat/SymbolTable-Compiler
+tanvirul-islam-rifat/Lexical-Syntax-Analyzer-Flex-Bison-Compiler-for-a-C-Subset
