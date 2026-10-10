@@ -39,11 +39,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Commits only show up on your contribution graph when the author email
+      # belongs to your GitHub account. The ID+username noreply address always
+      # does, and works even if "Keep my email addresses private" is enabled.
       - name: Commit data if it changed
         if: steps.decide.outputs.run == 'true'
+        env:
+          OWNER: ${{ github.repository_owner }}
+          OWNER_ID: ${{ github.repository_owner_id }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "$OWNER"
+          git config user.email "${OWNER_ID}+${OWNER}@users.noreply.github.com"
           git add data/
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Log repo stats: $(date -u +'%Y-%m-%d %H:%M UTC')"
