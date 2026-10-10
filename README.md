@@ -10,9 +10,9 @@ Pick repos with enough real activity (large, popular, frequently-starred project
 
 ## How it works
 
-1. A GitHub Actions workflow runs on a cron schedule (00:00, 06:00, 12:00, 18:00 UTC) or on demand.
+1. A GitHub Actions workflow wakes up every 3 hours (00:00, 03:00, ... 21:00 UTC) or on demand. `scripts/should_run.py` picks 1-5 of those slots per UTC day, so the number of snapshots varies day to day.
 2. `scripts/track_repos.py` reads the repo list from `repos.txt`, hits the GitHub REST API for each one, and appends a timestamped row to that repo's CSV.
-3. The workflow commits and pushes `data/` only if something actually changed, so there are no empty commits.
+3. The workflow commits and pushes `data/` only if something actually changed, so there are no empty commits. Commits are authored as the repo owner (via the account's `ID+username@users.noreply.github.com` address) so they count toward the owner's contribution graph.
 
 ## Setup
 
